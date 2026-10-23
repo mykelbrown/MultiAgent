@@ -1,0 +1,63 @@
+{
+ "info": {
+  "name": "metatrader5",
+  "version": "5.0.6231",
+  "summary": "API Connector to MetaTrader 5 Terminal",
+  "license": "MIT",
+  "license_expression": null,
+  "project_urls": {
+   "Documentation": "https://www.mql5.com/en/docs/integration/python_metatrader5",
+   "Forum": "https://www.mql5.com/en/forum",
+   "Homepage": "https://www.metatrader5.com"
+  },
+  "home_page": "https://www.metatrader5.com",
+  "requires_python": "<4,>=3.6"
+ },
+ "urls": [
+  {
+   "filename": "metatrader5-5.0.6231-cp310-cp310-win_amd64.whl",
+   "packagetype": "bdist_wheel",
+   "upload_time_iso_8601": "2026-09-27T12:22:32.445755Z"
+  },
+  {
+   "filename": "metatrader5-5.0.6231-cp311-cp311-win_amd64.whl",
+   "packagetype": "bdist_wheel",
+   "upload_time_iso_8601": "2026-09-27T12:22:33.889676Z"
+  },
+  {
+   "filename": "metatrader5-5.0.6231-cp312-cp312-win_amd64.whl",
+   "packagetype": "bdist_wheel",
+   "upload_time_iso_8601": "2026-09-27T12:22:35.219917Z"
+  },
+  {
+   "filename": "metatrader5-5.0.6231-cp313-cp313-win_amd64.whl",
+   "packagetype": "bdist_wheel",
+   "upload_time_iso_8601": "2026-09-27T12:22:36.136525Z"
+  },
+  {
+   "filename": "metatrader5-5.0.6231-cp314-cp314-win_amd64.whl",
+   "packagetype": "bdist_wheel",
+   "upload_time_iso_8601": "2026-09-27T12:22:37.030395Z"
+  },
+  {
+   "filename": "metatrader5-5.0.6231-cp36-cp36m-win_amd64.whl",
+   "packagetype": "bdist_wheel",
+   "upload_time_iso_8601": "2026-09-27T12:22:38.181764Z"
+  },
+  {
+   "filename": "metatrader5-5.0.6231-cp37-cp37m-win_amd64.whl",
+   "packagetype": "bdist_wheel",
+   "upload_time_iso_8601": "2026-09-27T12:22:39.286612Z"
+  },
+  {
+   "filename": "metatrader5-5.0.6231-cp38-cp38-win_amd64.whl",
+   "packagetype": "bdist_wheel",
+   "upload_time_iso_8601": "2026-09-27T12:22:40.582749Z"
+  },
+  {
+   "filename": "metatrader5-5.0.6231-cp39-cp39-win_amd64.whl",
+   "packagetype": "bdist_wheel",
+   "upload_time_iso_8601": "2026-09-27T12:22:41.564146Z"
+  }
+ ]
+}

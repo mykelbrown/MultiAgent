@@ -16,7 +16,7 @@ A secure, modular multi-agent platform. **Paper/demo trading only in this releas
 | Risk engine (sizing, caps, exposure, SL validation, daily loss, kill switch, signed orders) | ✅ implemented + tested |
 | Paper broker + reconciliation + emergency flatten | ✅ implemented + tested |
 | MT5 demo adapter | ⚠️ written; tested only against a fake module (needs Windows) |
-| Discovery service (read-only) | ✅ Stage 2 (see below) |
+| Discovery service (MCP registry + PyPI, scoring, provenance, approval-gated lifecycle, rollback) | ✅ read-only; `uv run aegis discover <query>` |
 | Orchestrator, scheduler, notifications, other 4 agents, dashboard | ⏳ planned |
 
 ## Setup (Windows or Linux)

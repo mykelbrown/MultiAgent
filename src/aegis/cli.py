@@ -84,6 +84,26 @@ def cmd_audit_verify(_: argparse.Namespace) -> int:
     return 0 if ok else 2
 
 
+def cmd_discover(args: argparse.Namespace) -> int:
+    """Read-only discovery: queries the MCP registry and PyPI metadata. Installs nothing."""
+    from aegis.core.permissions import PermissionGate
+    from aegis.discovery.registry import DiscoveryService, ToolRegistry
+    from aegis.discovery.sources import McpRegistrySource, PyPISource
+
+    settings = Settings.from_env()
+    audit, approvals = _paths(settings)
+    registry = ToolRegistry(settings.data_dir / "tool_registry.json", audit, approvals)
+    sources = {"mcp": McpRegistrySource(), "pypi": PyPISource()}
+    svc = DiscoveryService([sources[s] for s in args.sources], registry, PermissionGate(audit, approvals), audit)
+    for s in svc.discover(args.query, limit=args.limit, platform=args.platform):
+        c = s.candidate
+        print(f"{s.score.total:4.2f}  {c.kind:12} {c.name}  v{c.version}  license={c.license}  repo={c.repository_url}")
+        for flag in s.score.flags:
+            print(f"        ! {flag}")
+    print("\nAll candidates recorded as 'discovered'. Nothing was installed.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="aegis")
     sub = parser.add_subparsers(required=True)
@@ -92,6 +112,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("capability", choices=[c.value for c in Capability])
     p.add_argument("--minutes", type=int, default=15)
     p.set_defaults(fn=cmd_approve)
+    p = sub.add_parser("discover", help="read-only tool discovery (MCP registry, PyPI)")
+    p.add_argument("query", help="search text (mcp) / comma-separated package names (pypi)")
+    p.add_argument("--sources", nargs="+", choices=["mcp", "pypi"], default=["mcp"])
+    p.add_argument("--limit", type=int, default=10)
+    p.add_argument("--platform", default="win_amd64")
+    p.set_defaults(fn=cmd_discover)
     sub.add_parser("audit-verify", help="verify audit hash chain").set_defaults(fn=cmd_audit_verify)
     args = parser.parse_args(argv)
     result: int = args.fn(args)
