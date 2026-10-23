@@ -1,0 +1,30 @@
+{
+ "info": {
+  "name": "pydantic",
+  "version": "2.14.1",
+  "summary": "Data validation using Python type hints",
+  "license": null,
+  "license_expression": "MIT",
+  "project_urls": {
+   "Changelog": "https://pydantic.dev/docs/validation/latest/get-started/changelog/",
+   "Documentation": "https://pydantic.dev/docs/validation/latest/get-started/",
+   "Funding": "https://github.com/sponsors/samuelcolvin",
+   "Homepage": "https://github.com/pydantic/pydantic",
+   "Source": "https://github.com/pydantic/pydantic"
+  },
+  "home_page": null,
+  "requires_python": ">=3.10"
+ },
+ "urls": [
+  {
+   "filename": "pydantic-2.14.1-py3-none-any.whl",
+   "packagetype": "bdist_wheel",
+   "upload_time_iso_8601": "2026-10-11T18:37:53.437059Z"
+  },
+  {
+   "filename": "pydantic-2.14.1.tar.gz",
+   "packagetype": "sdist",
+   "upload_time_iso_8601": "2026-10-11T18:37:55.396662Z"
+  }
+ ]
+}

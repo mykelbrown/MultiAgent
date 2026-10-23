@@ -1,0 +1,16 @@
+# Secrets & local state — never commit
+.env
+.env.*
+!.env.example
+var/
+*.db
+approvals.json
+kill.json
+# Python
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+dist/
