@@ -88,12 +88,12 @@ def cmd_discover(args: argparse.Namespace) -> int:
     """Read-only discovery: queries the MCP registry and PyPI metadata. Installs nothing."""
     from aegis.core.permissions import PermissionGate
     from aegis.discovery.registry import DiscoveryService, ToolRegistry
-    from aegis.discovery.sources import McpRegistrySource, PyPISource
+    from aegis.discovery.sources import McpRegistrySource, PyPISource, Source
 
     settings = Settings.from_env()
     audit, approvals = _paths(settings)
     registry = ToolRegistry(settings.data_dir / "tool_registry.json", audit, approvals)
-    sources = {"mcp": McpRegistrySource(), "pypi": PyPISource()}
+    sources: dict[str, Source] = {"mcp": McpRegistrySource(), "pypi": PyPISource()}
     svc = DiscoveryService([sources[s] for s in args.sources], registry, PermissionGate(audit, approvals), audit)
     for s in svc.discover(args.query, limit=args.limit, platform=args.platform):
         c = s.candidate
