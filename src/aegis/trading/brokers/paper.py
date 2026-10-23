@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 from aegis.core.audit import AuditLog
@@ -19,12 +20,23 @@ from aegis.trading.risk import (
 )
 from aegis.trading.signals import Side
 
+# Read-only live price source (e.g. MT5 demo terminal ticks): symbol -> Quote.
+QuoteFeed = Callable[[str], Quote]
+
 
 class PaperBroker:
     mode = TradingMode.PAPER
 
-    def __init__(self, signer: OrderSigner, audit: AuditLog, balance: float = 10_000.0, currency: str = "USD") -> None:
+    def __init__(
+        self,
+        signer: OrderSigner,
+        audit: AuditLog,
+        balance: float = 10_000.0,
+        currency: str = "USD",
+        quote_feed: QuoteFeed | None = None,
+    ) -> None:
         self._signer = signer
+        self._feed = quote_feed
         self._audit = audit
         self._balance = balance
         self._currency = currency
@@ -39,6 +51,9 @@ class PaperBroker:
         self._check_stops(symbol)
 
     def quote(self, symbol: str) -> Quote:
+        if self._feed is not None:
+            q = self._feed(symbol)
+            self.set_quote(symbol, q.bid, q.ask, q.ts)
         if symbol not in self._quotes:
             raise BrokerError(f"no quote for {symbol}")
         return self._quotes[symbol]

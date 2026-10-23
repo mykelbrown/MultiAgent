@@ -63,17 +63,23 @@ class Settings(BaseModel):
     trading_mode: TradingMode = TradingMode.PAPER
     account_currency: str = "USD"
     symbol_allowlist: frozenset[str] = frozenset({"EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF"})
-    telegram_source_allowlist: frozenset[int] = frozenset()
+    telegram_source_allowlist: frozenset[int] = frozenset()  # channels/groups whose signals we trust
+    telegram_intake_chats: frozenset[int] = frozenset()  # chats the bot listens in
+    telegram_trusted_users: frozenset[int] = frozenset()  # users allowed to post/forward into intake groups
     risk: RiskLimits = RiskLimits()
 
     @classmethod
     def from_env(cls) -> Settings:
-        sources = os.environ.get("AEGIS_TELEGRAM_SOURCES", "")
+        def ids(var: str) -> frozenset[int]:
+            return frozenset(int(s) for s in os.environ.get(var, "").split(",") if s.strip())
+
         symbols = os.environ.get("AEGIS_SYMBOLS", "")
         kwargs: dict[str, object] = {
             "data_dir": Path(os.environ.get("AEGIS_DATA_DIR", "./var")),
             "trading_mode": TradingMode(os.environ.get("AEGIS_TRADING_MODE", "paper").lower()),
-            "telegram_source_allowlist": frozenset(int(s) for s in sources.split(",") if s.strip()),
+            "telegram_source_allowlist": ids("AEGIS_TELEGRAM_SOURCES"),
+            "telegram_intake_chats": ids("AEGIS_TELEGRAM_INTAKE_CHATS"),
+            "telegram_trusted_users": ids("AEGIS_TELEGRAM_TRUSTED_USERS"),
         }
         if symbols.strip():
             kwargs["symbol_allowlist"] = frozenset(s.strip().upper() for s in symbols.split(","))

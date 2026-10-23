@@ -5,10 +5,14 @@ from __future__ import annotations
 import argparse
 import sys
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
 from aegis.core.audit import AuditLog
 from aegis.core.config import Settings
 from aegis.core.permissions import ApprovalStore, Capability
+
+if TYPE_CHECKING:
+    from aegis.telegram.bot_api import BotApi
 
 
 def _paths(settings: Settings) -> tuple[AuditLog, ApprovalStore]:
@@ -104,6 +108,144 @@ def cmd_discover(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_mt5_check(_: argparse.Namespace) -> int:
+    """Read-only MT5 check (Windows): connects to the running terminal, reports account type and a tick."""
+    from aegis.trading.brokers.base import BrokerError
+    from aegis.trading.brokers.mt5 import MT5ReadOnly
+
+    try:
+        mt5 = MT5ReadOnly()
+    except BrokerError as exc:
+        print(f"FAIL: {exc}")
+        return 2
+    try:
+        summary = mt5.account_summary()
+        print("account:", summary)
+        for symbol in sorted(Settings.from_env().symbol_allowlist):
+            try:
+                q = mt5.quote(symbol)
+                print(f"tick {symbol}: bid={q.bid} ask={q.ask} at {q.ts.isoformat()}")
+            except BrokerError as exc:
+                print(f"tick {symbol}: unavailable ({exc})")
+        if not summary["is_demo"]:
+            print("WARNING: logged-in account is NOT demo. Aegis will refuse to place orders on it.")
+            return 3
+        print("OK: demo account reachable. No orders were sent.")
+        return 0
+    finally:
+        mt5.shutdown()
+
+
+def _bot_api() -> BotApi:
+    from aegis.core.secrets import get_secret
+    from aegis.telegram.bot_api import BotApi, make_transport
+
+    return BotApi(make_transport(get_secret("AEGIS_TELEGRAM_BOT_TOKEN")))
+
+
+def cmd_telegram_check(_: argparse.Namespace) -> int:
+    """Read-only: bot identity, webhook/privacy status, and chat/user IDs seen in *pending* updates
+    (pending updates are not confirmed, so nothing is consumed)."""
+    from aegis.core.secrets import MissingSecret
+    from aegis.telegram.bot_api import TelegramApiError
+
+    try:
+        api = _bot_api()
+        me = api.get_me()
+        hook = api.get_webhook_info()
+        pending = api.get_updates(offset=None, timeout=0)
+    except (MissingSecret, TelegramApiError) as exc:
+        print(f"FAIL: {exc}")
+        return 2
+    print(f"bot: @{me.get('username')} (id {me.get('id')})")
+    print(f"reads all group messages (privacy mode off): {me.get('can_read_all_group_messages')}")
+    if hook.get("url"):
+        print("WARNING: a webhook is set; getUpdates will not work until it is removed (deleteWebhook).")
+    seen: dict[int, str] = {}
+    users: dict[int, str] = {}
+    for u in pending:
+        msg: dict[str, Any] = next(
+            (u[k] for k in ("channel_post", "message", "edited_message", "edited_channel_post") if k in u), {}
+        )
+        chat = msg.get("chat", {})
+        seen[chat.get("id", 0)] = f"{chat.get('type')} '{chat.get('title') or chat.get('username') or ''}'"
+        if sender := msg.get("from"):
+            users[sender["id"]] = sender.get("username") or sender.get("first_name", "")
+        origin = msg.get("forward_origin") or {}
+        if origin.get("type") == "channel":
+            seen[origin["chat"]["id"]] = f"channel '{origin['chat'].get('title', '')}' (forward origin)"
+    print("chats seen in pending updates (use for AEGIS_TELEGRAM_INTAKE_CHATS / AEGIS_TELEGRAM_SOURCES):")
+    for cid, desc in seen.items():
+        print(f"  {cid}: {desc}")
+    print("senders seen (use for AEGIS_TELEGRAM_TRUSTED_USERS):")
+    for user_id, name in users.items():
+        print(f"  {user_id}: {name}")
+    return 0
+
+
+def cmd_telegram_run(args: argparse.Namespace) -> int:
+    """Run the Telegram bot intake. Paper (MT5 live prices) or MT5 demo orders. Never live."""
+    from aegis.agents.telegram_intake import TelegramIntakeAgent
+    from aegis.core.permissions import PermissionGate
+    from aegis.telegram.mapper import TelegramIntakeConfig
+    from aegis.telegram.poller import OffsetStore, TelegramPoller
+    from aegis.trading.brokers.base import Broker
+    from aegis.trading.brokers.mt5 import MT5DemoBroker, MT5ReadOnly
+    from aegis.trading.brokers.paper import PaperBroker
+    from aegis.trading.reconcile import Ledger, Reconciler
+    from aegis.trading.risk import KillSwitch, OrderSigner, RiskEngine
+    from aegis.trading.signals import SignalValidator
+
+    settings = Settings.from_env()
+    if not (settings.telegram_intake_chats and settings.telegram_source_allowlist):
+        print("Set AEGIS_TELEGRAM_INTAKE_CHATS and AEGIS_TELEGRAM_SOURCES first (see `aegis telegram-check`).")
+        return 2
+    audit, approvals = _paths(settings)
+    kill = KillSwitch(settings.data_dir / "kill.json", audit)
+    signer = OrderSigner()
+    broker: Broker
+    if args.broker == "mt5-demo":
+        demo = MT5DemoBroker(signer, audit)
+        demo.connect()  # refuses non-demo accounts
+        broker = demo
+    else:
+        feed = MT5ReadOnly()
+        broker = PaperBroker(signer, audit, balance=args.paper_balance, quote_feed=feed.quote)
+    ledger = Ledger()
+    agent = TelegramIntakeAgent(
+        PermissionGate(audit, approvals),
+        SignalValidator(settings.telegram_source_allowlist, settings.symbol_allowlist, settings.risk),
+        RiskEngine(settings.risk, settings.symbol_allowlist, kill, audit, signer),
+        broker,
+        ledger,
+        kill,
+        audit,
+    )
+    api = _bot_api()
+    poller = TelegramPoller(
+        api,
+        TelegramIntakeConfig(
+            intake_chats=settings.telegram_intake_chats, trusted_users=settings.telegram_trusted_users
+        ),
+        agent,
+        OffsetStore(settings.data_dir / "telegram_offset.json"),
+        audit,
+    )
+    reconciler = Reconciler(ledger, broker, kill, audit)
+    state = "TRIPPED" if kill.tripped else "armed"
+    print(f"Listening via Telegram bot -> {args.broker}. Kill switch: {state}. Ctrl+C to stop.")
+
+    def report(outcome: object) -> None:
+        print(outcome)
+        reconciler.run()
+
+    try:
+        poller.run_forever(on_outcome=report)
+    except KeyboardInterrupt:
+        print("stopped")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="aegis")
     sub = parser.add_subparsers(required=True)
@@ -118,6 +260,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--limit", type=int, default=10)
     p.add_argument("--platform", default="win_amd64")
     p.set_defaults(fn=cmd_discover)
+    sub.add_parser("mt5-check", help="read-only MT5 terminal check (Windows)").set_defaults(fn=cmd_mt5_check)
+    sub.add_parser("telegram-check", help="read-only Telegram bot check").set_defaults(fn=cmd_telegram_check)
+    p = sub.add_parser("telegram-run", help="run Telegram signal intake (paper or MT5 demo)")
+    p.add_argument("--broker", choices=["paper", "mt5-demo"], default="paper")
+    p.add_argument("--paper-balance", type=float, default=10_000.0)
+    p.set_defaults(fn=cmd_telegram_run)
     sub.add_parser("audit-verify", help="verify audit hash chain").set_defaults(fn=cmd_audit_verify)
     args = parser.parse_args(argv)
     result: int = args.fn(args)
