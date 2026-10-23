@@ -175,3 +175,40 @@ class MT5DemoBroker:
     def shutdown(self) -> None:
         self._mt5.shutdown()
         self._connected = False
+
+
+class MT5ReadOnly:
+    """Read-only MT5 access (account info + ticks). Never sends orders; works on any account type,
+    used for the setup check and as a live price feed for paper trading."""
+
+    def __init__(self, mt5_module: Any | None = None) -> None:
+        self._mt5 = mt5_module or _load_mt5()
+        kwargs: dict[str, Any] = {}
+        if path := os.environ.get("AEGIS_MT5_TERMINAL_PATH"):
+            kwargs["path"] = path
+        if not self._mt5.initialize(**kwargs):
+            raise BrokerError(f"MT5 initialize failed: {self._mt5.last_error()}")
+
+    def account_summary(self) -> dict[str, Any]:
+        info = self._mt5.account_info()
+        if info is None:
+            raise BrokerError("MT5 has no logged-in account")
+        return {
+            "is_demo": info.trade_mode == self._mt5.ACCOUNT_TRADE_MODE_DEMO,
+            "server": info.server,
+            "currency": info.currency,
+            "balance": info.balance,
+            "leverage": info.leverage,
+            "trade_allowed": bool(getattr(info, "trade_allowed", False)),
+        }
+
+    def quote(self, symbol: str) -> Quote:
+        if not self._mt5.symbol_select(symbol, True):
+            raise BrokerError(f"cannot select {symbol}")
+        tick = self._mt5.symbol_info_tick(symbol)
+        if tick is None:
+            raise BrokerError(f"no tick for {symbol}")
+        return Quote(symbol=symbol, bid=tick.bid, ask=tick.ask, ts=datetime.fromtimestamp(tick.time, UTC))
+
+    def shutdown(self) -> None:
+        self._mt5.shutdown()

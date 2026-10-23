@@ -38,7 +38,7 @@ Review this document whenever a new integration, permission, or agent capability
 
 | # | Boundary | Threat | Mitigation (status) |
 |---|---|---|---|
-| T1 | B1 | **Spoofed signal** (fake channel, forwarded msg) | Source allowlist by numeric chat ID, not name (slice 1 ✅) |
+| T1 | B1 | **Spoofed signal** (fake channel, forwarded msg, stranger in group) | Source allowlist by numeric chat ID, not name (✅); intake-chat allowlist + trusted-user allowlist for groups; forwards attributed via server-set `forward_origin`; user/hidden-user forwards rejected; edits never executed (✅ Telegram bot) |
 | T2 | B1 | **Malformed / ambiguous signal** ⇒ wrong trade | Strict schema; reject on missing SL, contradictory direction vs SL/TP geometry, multiple symbols, unknown symbol (slice 1 ✅) |
 | T3 | B1 | **Replay / duplicate** signal ⇒ double exposure | Content hash + message-ID dedupe window (slice 1 ✅) |
 | T4 | B1 | **Stale signal** executed at bad price | Max-age check; price-distance-from-entry check at execution (slice 1 ✅ age; price check in paper broker ✅) |
@@ -66,6 +66,6 @@ Review this document whenever a new integration, permission, or agent capability
 ## 6. Residual risks (accepted / open)
 
 1. **MT5 terminal runs on Windows only**; this repo is developed on Linux. MT5 adapter is written against the documented API but **untested** until run on the owner's Windows demo account.
-2. **Telegram ingestion path is undecided** (see plan, decision D2). Bot API only sees channels where the bot is a member/admin; reading third-party channels requires a user (MTProto) client, which has ToS and account-ban risk.
+2. **Telegram:** Bot API chosen (D2). Third-party channels are covered only via the owner forwarding posts; a compromised owner Telegram account could inject signals (mitigated by risk limits and SL validation, not eliminated). Bot token stored in the OS user environment is readable by anything running as that Windows user.
 3. Market gaps/slippage can exceed SL — daily loss limit is a soft bound on *realized+floating* P&L, not a guarantee.
 4. Local-machine compromise defeats all in-process controls; mitigate with OS account hygiene and a dedicated Windows user for MT5.

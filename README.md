@@ -12,10 +12,11 @@ A secure, modular multi-agent platform. **Paper/demo trading only in this releas
 | Component | State |
 |---|---|
 | Audit log (hash chain, append-only), redaction, permission gate, approvals | ✅ implemented + tested |
-| Telegram signal parser/validator (schema, stale, duplicate, contradictory, ambiguous) | ✅ implemented + tested (fixtures; no live Telegram yet) |
+| Telegram signal parser/validator (schema, stale, duplicate, contradictory, ambiguous) | ✅ implemented + tested |
+| Telegram bot intake (Bot API long polling: channels, forwards into private group; edits rejected) | ✅ tested against recorded-shape updates; ⚠️ not yet run against a real bot token |
 | Risk engine (sizing, caps, exposure, SL validation, daily loss, kill switch, signed orders) | ✅ implemented + tested |
 | Paper broker + reconciliation + emergency flatten | ✅ implemented + tested |
-| MT5 demo adapter | ⚠️ written; tested only against a fake module (needs Windows) |
+| MT5 demo adapter + read-only `aegis mt5-check` + paper trading on live MT5 prices | ⚠️ tested only against a fake module; run `scripts/windows/setup.ps1` on Windows ([guide](docs/WINDOWS_SETUP.md)) |
 | Discovery service (MCP registry + PyPI, scoring, provenance, approval-gated lifecycle, rollback) | ✅ read-only; `uv run aegis discover <query>` |
 | Orchestrator, scheduler, notifications, other 4 agents, dashboard | ⏳ planned |
 
@@ -29,6 +30,9 @@ uv run pytest                # run the test suite
 uv run aegis demo            # paper-trading pipeline on sample signals (in memory)
 uv run aegis audit-verify    # verify the audit log chain in ./var
 uv run aegis approve trading.reset_kill_switch   # owner approval (interactive, single use)
+uv run aegis telegram-check  # read-only bot check; lists chat/user IDs (docs/TELEGRAM_BOT_SETUP.md)
+uv run aegis telegram-run --broker paper   # Telegram -> paper trades on live MT5 prices
+uv run aegis mt5-check       # Windows: read-only MT5 terminal check
 # Windows + MT5 demo only (Stage 4):
 uv sync --extra mt5
 ```

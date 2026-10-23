@@ -55,12 +55,12 @@ contradiction) ─► RiskEngine (limits, SL, exposure, daily loss, kill switch)
 | **9** | Forex Research agent: data via approved source, backtester, research reports (no profitability claims) | Backtest reproducible from pinned data |
 | **10** | Dashboard (FastAPI, 127.0.0.1, token auth): audit view, positions, approvals, kill switch | Auth + CSRF tests |
 
-## 3. Decisions needed from the owner (blocking only later stages)
+## 3. Owner decisions (updated 2026-10-23)
 
-- **D1 – Windows host for MT5 (Stage 4).** MT5 terminal + Python package run on Windows only. Confirm you will run Stage 4 on your Windows PC with a **demo** account.
-- **D2 – Telegram ingestion method (Stage 5).** (a) Bot API: bot added to channels you control / forwarding into a private group — lowest risk, ToS-clean; (b) user-client (Telethon/MTProto) to read third-party channels — works for channels you don't control but uses your personal account; must respect Telegram ToS. Recommended: (a).
-- **D3 – LLM provider for agents 3/5/6/7** (Claude API recommended; key via env var).
-- **D4 – Dependency approval policy.** Your brief contains both "never install untrusted tools automatically" and "don't require approval before adding dependencies that can execute arbitrary code…". I am treating the safer reading as authoritative: well-known dev/test libraries pinned in `uv.lock` are added freely and recorded in `docs/DEPENDENCIES.md`; **new MCP servers, executables, private-account access, or permission grants need your approval.** Tell me if you meant otherwise.
+- **D1 – Windows host for MT5: DECIDED.** Owner will run MT5 on their Windows PC with a demo account. The cloud session cannot reach that PC, so setup is via `scripts/windows/setup.ps1` (read-only `aegis mt5-check`), or a local Claude Code session on the PC.
+- **D2 – Telegram ingestion: DECIDED → Bot API.** Bot in channels the owner controls, plus forwarding into a private intake group. No personal-account (MTProto) access. Implemented in `src/aegis/telegram/`.
+- **D3 – LLM provider: OPEN.** Default recommendation: Anthropic Claude via the official SDK, behind a provider interface, key from env/Credential Manager. To be confirmed by owner before Stage 6.
+- **D4 – Dependency policy: DECIDED → safer reading.** Well-known libraries pinned in `uv.lock` may be added and recorded in `docs/DEPENDENCIES.md`; new MCP servers, executables, private-account access and permission grants require owner approval.
 
 ## 4. Policies (enforced in code where marked)
 
